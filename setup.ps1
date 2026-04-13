@@ -200,30 +200,94 @@ if (Test-Path $vsCodeSettingsFile) {
 
 Write-Step "Git global configuration"
 
-# Use Git Bash for running git config
 $gitBash = "C:\Program Files\Git\bin\bash.exe"
 
 if (Test-Path $gitBash) {
+    & $gitBash -c "git config --global user.name 'Declan Costello'"
+    & $gitBash -c "git config --global user.email 'declan@costello.ie'"
     & $gitBash -c "git config --global core.autocrlf false"
     & $gitBash -c "git config --global init.defaultBranch main"
     & $gitBash -c "git config --global core.editor 'code --wait'"
+    Write-OK "user.name = Declan Costello"
+    Write-OK "user.email = declan@costello.ie"
     Write-OK "core.autocrlf = false"
     Write-OK "init.defaultBranch = main"
     Write-OK "core.editor = code --wait"
-    Write-Host ""
-    Write-Host "    Still needed (run manually in Git Bash):" -ForegroundColor Yellow
-    Write-Host '    git config --global user.name "Your Name"' -ForegroundColor DarkYellow
-    Write-Host '    git config --global user.email "you@example.com"' -ForegroundColor DarkYellow
 } else {
     Write-Host "    Git Bash not found at expected path — skipping git config" -ForegroundColor Yellow
     Write-Host "    Run manually after restarting terminal." -ForegroundColor DarkYellow
+}
+
+# ─── Step 10b: SSH Key ────────────────────────────────────────────────────────
+
+Write-Step "SSH key for GitHub"
+
+$sshKeyPath = "$env:USERPROFILE\.ssh\id_ed25519"
+
+if (Test-Path $sshKeyPath) {
+    Write-Skip "SSH key ($sshKeyPath)"
+} else {
+    if (Test-Path $gitBash) {
+        & $gitBash -c "ssh-keygen -t ed25519 -C 'declan@costello.ie' -f ~/.ssh/id_ed25519 -N ''"
+        Write-OK "SSH key generated at $sshKeyPath"
+
+        # Write persistent SSH agent snippet to ~/.bashrc
+        $bashrc = "$env:USERPROFILE\.bashrc"
+        $agentSnippet = @'
+
+# ─── SSH Agent (auto-start) ───────────────────────────────────────────────────
+env=~/.ssh/agent.env
+agent_load_env () { test -f "$env" && . "$env" >| /dev/null ; }
+agent_start () { (umask 077; ssh-agent >| "$env"); . "$env" >| /dev/null ; }
+agent_load_env
+agent_run_state=$(ssh-add -l >| /dev/null 2>&1; echo $?)
+if [ ! "$SSH_AUTH_SOCK" ] || [ $agent_run_state = 2 ]; then
+    agent_start; ssh-add
+elif [ "$SSH_AUTH_SOCK" ] && [ $agent_run_state = 1 ]; then
+    ssh-add
+fi
+unset env
+'@
+        if (Test-Path $bashrc) {
+            if (-not (Select-String -Path $bashrc -Pattern "SSH Agent" -Quiet)) {
+                Add-Content -Path $bashrc -Value $agentSnippet -Encoding UTF8
+                Write-OK "SSH agent snippet added to ~/.bashrc"
+            } else {
+                Write-Skip "SSH agent snippet (already in ~/.bashrc)"
+            }
+        } else {
+            Set-Content -Path $bashrc -Value $agentSnippet.TrimStart() -Encoding UTF8
+            Write-OK "~/.bashrc created with SSH agent snippet"
+        }
+
+        Write-Host ""
+        Write-Host "    ACTION REQUIRED: Add your public key to GitHub" -ForegroundColor Yellow
+        Write-Host "    1. Copy this key:" -ForegroundColor DarkYellow
+        Write-Host ""
+        & $gitBash -c "cat ~/.ssh/id_ed25519.pub"
+        Write-Host ""
+        Write-Host "    2. Go to: GitHub → Settings → SSH and GPG keys → New SSH key" -ForegroundColor DarkYellow
+        Write-Host "    3. Paste the key above and save" -ForegroundColor DarkYellow
+    } else {
+        Write-Host "    Git Bash not found — skipping SSH key generation" -ForegroundColor Yellow
+    }
 }
 
 # ─── Step 11: Create code folder ──────────────────────────────────────────────
 
 Write-Step "Code folder"
 
-$codeDir = "$env:USERPROFILE\OneDrive - Ryanair Ltd\Documents\code"
+# Detect OneDrive folder — works for both personal and work accounts
+$oneDriveWork = "$env:USERPROFILE\OneDrive - Ryanair Ltd"
+$oneDrivePersonal = "$env:USERPROFILE\OneDrive"
+
+if (Test-Path $oneDriveWork) {
+    $codeDir = "$oneDriveWork\Documents\code"
+} elseif (Test-Path $oneDrivePersonal) {
+    $codeDir = "$oneDrivePersonal\Documents\code"
+} else {
+    $codeDir = "$env:USERPROFILE\Documents\code"
+}
 
 if (Test-Path $codeDir) {
     Write-Skip "Code folder ($codeDir)"
@@ -250,9 +314,8 @@ Write-Host "   - Claude Code"
 Write-Host ""
 Write-Host " Next steps (manual):" -ForegroundColor Yellow
 Write-Host "   1. Restart your terminal"
-Write-Host "   2. Set git user.name and user.email (see 03-git-github.md)"
-Write-Host "   3. Generate SSH key and add to GitHub (see 03-git-github.md)"
-Write-Host "   4. Configure AWS profiles (see 04-aws.md)"
-Write-Host "   5. Clone your repos (see 05-projects.md)"
-Write-Host "   6. Run 'claude' to authenticate Claude Code"
+Write-Host "   2. Add your SSH public key to GitHub (printed above, see 03-git-github.md)"
+Write-Host "   3. Configure AWS profiles (see 04-aws.md)"
+Write-Host "   4. Clone your repos (see 05-projects.md)"
+Write-Host "   5. Run 'claude' to authenticate Claude Code"
 Write-Host ""
