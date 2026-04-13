@@ -30,7 +30,7 @@ Open PowerShell **as Administrator** and run:
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
-irm https://raw.githubusercontent.com/deccos/setup/main/setup.ps1 | iex
+irm https://raw.githubusercontent.com/deccos/dev-setup/main/setup.ps1 | iex
 ```
 
 Or if you have this repo cloned locally:
