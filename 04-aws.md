@@ -1,6 +1,6 @@
 # AWS Setup
 
-All projects use AWS with isolated IAM users and named profiles. Never use a single shared `default` profile for everything — each project has its own.
+All projects deploy through a single shared IAM user: `deccos-deployer`. One profile, one set of credentials, all projects.
 
 ---
 
@@ -19,26 +19,23 @@ aws --version   # aws-cli/2.x.x Python/3.x.x
 
 ## 2. AWS Profile Structure
 
-Each project has a dedicated IAM user and a named CLI profile:
+All projects share a single IAM user and a single named CLI profile:
 
-| Project | AWS Profile | Region |
-|---------|-------------|--------|
-| stocktracker | `stocktracker` | eu-west-1 |
-| task-tracker | `task-tracker` | eu-west-1 |
-| stjosephs-gfc | `stjosephs-gfc` | eu-west-1 |
-| whattodo | `whattodo` | eu-west-1 |
+| User | AWS Profile | Region |
+|------|-------------|--------|
+| `deccos-deployer` | `deccos-deployer` | eu-west-1 |
 
 > All primary resources are in **eu-west-1** (Ireland).
 > WAF stacks are always in **us-east-1** (required by CloudFront).
 
 ---
 
-## 3. Configuring AWS Profiles
+## 3. Configuring the AWS Profile
 
-For each project, run:
+Run once:
 
 ```bash
-aws configure --profile stocktracker
+aws configure --profile deccos-deployer
 ```
 
 You'll be prompted for:
@@ -49,19 +46,17 @@ Default region name:   eu-west-1
 Default output format: json
 ```
 
-Repeat for each project profile (`task-tracker`, `stjosephs-gfc`, `whattodo`).
-
 The credentials are stored in `~/.aws/credentials` and `~/.aws/config`.
 
 ---
 
-## 4. Creating IAM Users (on the AWS side)
+## 4. Creating the IAM User (on the AWS side)
 
-Each project has a deployer IAM user named `{project}-deployer`. When setting up a new account or new project:
+One-time setup for a new AWS account:
 
 1. Log into AWS Console
 2. Go to **IAM → Users → Create User**
-3. Name: `stocktracker-deployer` (etc.)
+3. Name: `deccos-deployer`
 4. **Do not enable console access** — CLI only
 5. After creation, go to **Security Credentials → Create Access Key**
 6. Select "CLI" use case
@@ -69,20 +64,20 @@ Each project has a deployer IAM user named `{project}-deployer`. When setting up
 
 ### IAM Policy
 
-Each project has a `iam/deploy-policy.json` file in the repo. Attach this as an inline policy to the deployer user:
+The shared policy is in `iam/deccos-deployer-policy.json` (this repo). Attach it as an inline policy:
 
-1. IAM → Users → `stocktracker-deployer`
+1. IAM → Users → `deccos-deployer`
 2. Permissions → Add permissions → Create inline policy
-3. Paste the JSON from `iam/deploy-policy.json`
+3. Paste the JSON from `iam/deccos-deployer-policy.json`
 
-The policy is scoped to only the resources that project needs (Lambda, DynamoDB, S3, CloudFront, etc.).
+The policy covers all services used across all projects (Lambda, DynamoDB, S3, CloudFront, WAF, ACM, Secrets Manager, SSM, EventBridge, CloudWatch Logs).
 
 ---
 
-## 5. Verify a Profile
+## 5. Verify the Profile
 
 ```bash
-aws sts get-caller-identity --profile stocktracker
+aws sts get-caller-identity --profile deccos-deployer
 ```
 
 Expected output:
@@ -90,7 +85,7 @@ Expected output:
 {
     "UserId": "AIDA...",
     "Account": "123456789012",
-    "Arn": "arn:aws:iam::123456789012:user/stocktracker-deployer"
+    "Arn": "arn:aws:iam::123456789012:user/deccos-deployer"
 }
 ```
 
@@ -98,26 +93,14 @@ Expected output:
 
 ## 6. AWS Credentials File Structure
 
-After configuring all profiles, `~/.aws/credentials` should look like:
+After configuring the profile, `~/.aws/credentials` should look like:
 
 ```ini
 [default]
 aws_access_key_id = ...
 aws_secret_access_key = ...
 
-[stocktracker]
-aws_access_key_id = AKIATCTURF2N...
-aws_secret_access_key = ...
-
-[task-tracker]
-aws_access_key_id = AKIATCTURF2N...
-aws_secret_access_key = ...
-
-[stjosephs-gfc]
-aws_access_key_id = AKIATCTURF2N...
-aws_secret_access_key = ...
-
-[whattodo]
+[deccos-deployer]
 aws_access_key_id = AKIATCTURF2N...
 aws_secret_access_key = ...
 ```
@@ -125,19 +108,7 @@ aws_secret_access_key = ...
 And `~/.aws/config`:
 
 ```ini
-[profile stocktracker]
-region = eu-west-1
-output = json
-
-[profile task-tracker]
-region = eu-west-1
-output = json
-
-[profile stjosephs-gfc]
-region = eu-west-1
-output = json
-
-[profile whattodo]
+[profile deccos-deployer]
 region = eu-west-1
 output = json
 ```
