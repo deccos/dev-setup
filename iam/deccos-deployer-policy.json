@@ -150,6 +150,11 @@
         "cloudfront:DeleteCachePolicy",
         "cloudfront:GetCachePolicy",
         "cloudfront:ListCachePolicies",
+        "cloudfront:CreateResponseHeadersPolicy",
+        "cloudfront:UpdateResponseHeadersPolicy",
+        "cloudfront:DeleteResponseHeadersPolicy",
+        "cloudfront:GetResponseHeadersPolicy",
+        "cloudfront:ListResponseHeadersPolicies",
         "cloudfront:TagResource",
         "cloudfront:UntagResource",
         "cloudfront:ListTagsForResource"
