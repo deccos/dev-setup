@@ -67,6 +67,7 @@
         "dynamodb:DescribeContinuousBackups",
         "dynamodb:UpdateContinuousBackups",
         "dynamodb:DescribeTimeToLive",
+        "dynamodb:UpdateTimeToLive",
         "dynamodb:TagResource",
         "dynamodb:UntagResource",
         "dynamodb:ListTagsOfResource"
